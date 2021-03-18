@@ -1,0 +1,37 @@
+Elasticsearch Rolling Upgrade
+
+1- Go to Kibana and Run These
+
+PUT _cluster/settings
+{
+  "persistent": {
+    "cluster.routing.allocation.enable": "primaries"
+  }
+}
+
+POST _flush/synced
+
+2-  Download Elasticsearch*.tar.gz and extract
+
+ tar -xvf elasticsearch*.tar.gz 
+ 
+3- Edit elasticsearch.yml and start
+
+./bin/elasticsearch -d
+
+4- See all nodes running using with this command (From Kibana)
+
+  GET _cat/nodes
+
+5- Run This command for shard replication
+
+PUT _cluster/settings
+{
+  "persistent": {
+    "cluster.routing.allocation.enable": null
+  }
+}
+
+6- Check Cluster Nodes situation
+
+GET _cat/health?v

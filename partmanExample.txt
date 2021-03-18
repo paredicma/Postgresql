@@ -1,0 +1,63 @@
+1- receive_time a göre günlük partition gerekiyor. PK larda asagıdaki gibi olmalı. Yeni gune gecildiginde partition hazır olmalıdır.
+--drop table testSchema.testTable4 CASCADE;
+CREATE TABLE testSchema.testTable4 (
+                node_id int4 NOT NULL,
+                service int4 NOT NULL,
+                client varchar(40) NOT NULL,
+                transaction_id varchar(60) NOT NULL,
+                report_id varchar(100) NULL,
+                number_of_message int4 NOT NULL DEFAULT 1,
+                total_number_of_message int4 NULL DEFAULT 1,
+                receive_time timestamp NOT NULL,
+                multiplier float8 NOT null,
+                CONSTRAINT testTable4_pk PRIMARY KEY (receive_time, client, report_id, service)
+) PARTITION BY RANGE (receive_time);
+
+
+SELECT partman.create_parent('testSchema.testTable4', 'receive_time', 'native', 'daily', p_premake:=210, p_start_partition := '2020-08-21); 
+
+2- receive_time a göre günlük partition gerekiyor. PK larda asagıdaki gibi olmalı. Yeni gune gecildiginde partition hazır olmalıdır.
+--drop table testSchema.testTable1 CASCADE;
+CREATE TABLE testSchema.testTable1 (
+                node_id int4 NOT NULL,
+                service int4 NOT NULL,
+                client varchar(40) NOT NULL,
+                report_id varchar(100) NOT NULL,
+                receive_time timestamp NOT NULL,
+                CONSTRAINT testTable1_pk PRIMARY KEY (receive_time, client, report_id, service)
+) PARTITION BY RANGE (receive_time);
+
+
+SELECT partman.create_parent('testSchema.testTable1', 'receive_time', 'native', 'daily', p_premake:=210, p_start_partition := '2020-08-21');
+ 
+3- execute_time a göre günlük partition gerekiyor. 6 aylık partition önden hazır edilmelidir. Cunku ileri tarihli kayıtlar insert edilecek.
+--drop table testSchema2.testTable2 CASCADE;
+CREATE TABLE testSchema2.testTable2 (
+                id int8 NOT NULL,
+                service_id int8 NOT NULL,
+                locale varchar(3) NOT NULL,
+                msisdn varchar(30) NOT NULL,
+                execute_time timestamp NOT NULL,
+                execute_pattern varchar(100) NOT NULL,
+                parameter_names varchar(4000) NULL,
+                parameter_values varchar(4000) NULL,
+    create_time timestamp NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX testTable2_id_idx ON testSchema2.testTable2 (id);
+CREATE INDEX testTable2_msisdn_service_id_idx ON testSchema2.testTable2 (msisdn , service_id);
+
+SELECT partman.create_parent('testSchema2.testTable2', 'receive_time', 'native', 'daily', p_premake:=210, p_start_partition := '2020-08-21');
+
+
+-- DROP TABLE testSchema.testTable3 CASCADE;
+CREATE TABLE testSchema.testTable3 (
+       service_id int8 NOT NULL,
+       total_number_of_messages int8 NOT NULL,
+       total_multiplier numeric(15,2) NOT NULL,
+       report_time timestamp NULL DEFAULT (CURRENT_TIMESTAMP - '1 day'::interval),
+       create_time timestamp NULL DEFAULT CURRENT_TIMESTAMP
+) PARTITION BY RANGE (report_time);
+
+SELECT partman.create_parent('testSchema.testTable3', 'report_time', 'native', 'daily', p_premake:=210, p_start_partition := '2020-08-21');
+
+
