@@ -1,0 +1,95 @@
+----------- REMOTE SERVER --------------------
+postgresql.conf
+###############
+shared_preload_libraries = 'pg_stat_statements,powa,pg_stat_kcache,pg_qualstats' #pg_wait_sampling  
+track_io_timing = on
+
+psql
+##############
+create database powa;
+\c powa
+CREATE EXTENSION pg_stat_statements;
+CREATE EXTENSION btree_gist;
+CREATE EXTENSION powa;
+CREATE EXTENSION pg_qualstats;
+CREATE EXTENSION pg_stat_kcache;
+CREATE EXTENSION hypopg;
+
+CREATE ROLE powa SUPERUSER LOGIN PASSWORD '**************' ;
+
+
+----------- POWA SERVER --------------------
+postgresql.conf
+###############
+shared_preload_libraries = 'pg_stat_statements,powa,pg_stat_kcache,pg_qualstats' #pg_wait_sampling  
+track_io_timing = on
+
+psql
+##############
+create database powa;
+\c powa
+CREATE EXTENSION pg_stat_statements;
+CREATE EXTENSION btree_gist;
+CREATE EXTENSION powa;
+CREATE EXTENSION pg_qualstats;
+CREATE EXTENSION pg_stat_kcache;
+CREATE EXTENSION hypopg;
+
+CREATE ROLE powa SUPERUSER LOGIN PASSWORD '**************' ;
+
+
+powa-collector.conf
+##################
+{
+    "repository": {
+        "dsn": "postgresql://powa@localhost:5432/powa?sslmode=disable"
+    },
+    "debug": false
+}
+
+postgres# nohup python powa-collector.py &
+
+powa-web.conf
+##################
+servers={
+  'bip': {
+    'host': 'localhost',
+    'port': '5432',
+    'database': 'powa',
+    'username': 'monitor',
+    'password': '**********',
+    'query': {'client_encoding': 'utf8'}
+  }
+}
+cookie_secret="SUPERSECRET_THAT_YOU_SHOULD_CHANGE"
+
+root# powa-web  
+
+
+
+
+powa psql
+--------------------
+psql powa 
+####################
+SELECT powa_register_server(hostname => 'testhost01',
+    alias => 'myAlias',
+	username => 'powa',
+    password => '********',
+	retention => '7 days',
+    extensions => '{pg_stat_statements,pg_stat_kcache,pg_qualstats,pg_wait_sampling}');
+	
+SELECT powa_activate_extension(3, 'pg_track_settings');	
+SELECT powa_deactivate_extension(3, 'pg_track_settings');
+	
+SELECT powa_delete_and_purge_server(3);		
+
+
+SELECT powa_register_server(hostname => 'testhost01',
+    alias => 'NGNE',
+	username => 'powa',
+    password => 'Ng11Ne_321',
+	retention => '3 days',
+    extensions => '{pg_stat_statements,pg_stat_kcache,pg_qualstats,pg_wait_sampling}');		
+	
+SELECT powa_stat_bgwriter_snapshot(2);		
