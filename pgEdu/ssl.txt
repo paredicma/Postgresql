@@ -1,0 +1,38 @@
+SSL
+
+ 1 -  Aþaðýdaki komut ile key oluþturulur ve oluþturulan bu key /pgdata/data/ dizini altýna kopyalanýr.
+root@ openssl genrsa -des3 -out server.key 2048
+
+2 - Ýstenirse aþaðýdaki komut ile key þifresiz hale getirilebilir.
+root@  openssl rsa -in server.key -out server.key
+
+3 - Oluþan key kullanýlarak aþaðýdaki komut ile csr dosyasý oluþturulur.
+root@  openssl req -new -key server.key -out server.crs
+
+4 - Aþaðýdaki komut ile server.crt dosyasý oluþturulur.
+root@  openssl x509 -req -days 3650 -in server.crs -signkey server.key -out server.crt
+
+5 - Aþaðýdaki komutlar ile dosya haklarý güncellenir. 
+root@ chown postgres.postgres server.*
+root@ chmod 400 server.*
+
+6 - Aþaðýdaki komut ile root.crt oluþturulur.
+cp -pr  server.crt root.crt
+ 
+7 - Postgresql.conf aþaðýdaki gibi güncellenir.
+root@ vi postgresql.conf
+ ###########################################
+ ssl = on                                
+ ssl_cert_file = 'server.crt'           
+ ssl_key_file = 'server.key'            
+ ssl_ca_file = 'root.crt'  
+ ###########################################
+ 
+ 8 - SSL siz baðlantýyý engellemek için pg_hba.conf dosyasýna ilgili client lar için kayýt girilir.
+root@ vi pg_hba.conf
+ ###########################################
+ hostnossl all             all             x.x.x.x/32    reject 
+ ###########################################
+
+ 9 - Aþaðýdaki komut ile postgresql servisi restart edilir.
+root@ systemctl restart postgresql
