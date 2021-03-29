@@ -1,0 +1,49 @@
+/usr/pgsql-12/bin/pg_upgrade -b /usr/pgsql-11/bin/ -B /usr/pgsql-12/bin/ -d /pgdata/data11/ -D /pgdata/datanew/ -k -c
+
+
+Geçiş öncesi
+
+1 - /usr/pgsql-11/bin/pg_basebackup -h server01 -D /pgdata/data11 -U replicator -p 5432 -v -P --wal-method=stream
+	/usr/pgsql-11/bin/pg_ctl start -D /pgdata/data11
+
+2 - Stop Patroni
+
+3- patronictl -c /etc/patroni/patroni.yml remove testdb
+
+pg_ctl start -D /pgdata/data
+ drop user admin;
+ drop user replicator ;
+pg_ctl stop -D /pgdata/data
+
+cd /pgdata/
+cp -pr data/patroni.dynamic.json datanew/
+cp -pr data/*.conf* datanew/
+edit pg_hba.conf
+mv data datapatroniold
+
+Geçiş sırasında
+
+4 - eski cluster vipmasterları kapat
+
+5 - yeni standby sync kontrolü 
+
+6- /usr/pgsql-11/bin/pg_ctl stop -D /pgdata/data11 ;  mv recovery.conf recovery.conf.old;  rm -f /pgdata/WAL_ARCHIVE/*;  /usr/pgsql-12/bin/initdb -D /pgdata/newdata/ -k 
+shared_preload_libraries  ayarlanacak.
+
+7- /usr/pgsql-12/bin/pg_upgrade -b /usr/pgsql-11/bin/ -B /usr/pgsql-12/bin/ -d /pgdata/data11/ -D /pgdata/newdata/ -k -c
+
+8- /usr/pgsql-12/bin/pg_upgrade -b /usr/pgsql-11/bin/ -B /usr/pgsql-12/bin/ -d /pgdata/data11/ -D /pgdata/newdata/ -k 
+
+9- mv datanew data
+rm -f /pgdata/WAL_ARCHIVE/*
+
+
+10- cp -pr patroniconf/*.conf* data/  ;  cp -pr patroniconf/patroni.dynamic.json data/ 
+
+11- systemctl start patroni (carbon02)
+
+12- ( vacuum analyze) time /usr/pgsql-12/bin/vacuumdb --all --analyze-only 
+
+
+ systemctl start vipmaster
+ 

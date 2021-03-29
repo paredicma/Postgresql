@@ -1,0 +1,219 @@
+patroni Setup
+
+ballica08 Master PG  - 11.22.33.236
+ballica09 Slave PG1  - 11.22.33.237
+ballica10 Slave PG2  - 11.22.33.238
+
+yum install libicu-60.2-6.el8.x86_64.rpm
+yum install -y postgresql12-12.4-1PGDG.rhel8.x86_64.rpm postgresql12-server-12.4-1PGDG.rhel8.x86_64.rpm postgresql12-libs-12.4-1PGDG.rhel8.x86_64.rpm postgresql12-contrib-12.4-1PGDG.rhel8.x86_64.rpm postgresql12-turkcellPasswordChecker-1-0.x86_64.rpm 
+yum install -y python3-psycopg2.x86_64 python3-click.noarch python3-prettytable.noarch python3-cdiff-1.0-1.rhel8.noarch.rpm python3-ydiff-1.2-10.rhel8.noarch.rpm
+##yum install -y python3-cdiff-1.0-1.rhel8.noarch.rpm python3-ydiff-1.2-10.rhel8.noarch.rpm
+rpm -ivh python3-dns-1.15.0-8.el8.noarch.rpm python3-certifi-2018.10.15-7.el8.noarch.rpm python3-etcd-0.4.5-20.rhel8.noarch.rpm
+rpm -ivh etcd-3.2.21-2.el8.x86_64.rpm 
+rpm -ivh patroni-2.0.1-4.rhel8.x86_64.rpm
+rpm -ivh patroni-etcd-2.0.1-4.rhel8.x86_64.rpm
+
+
+
+
+Instance	Application				IP Address
+Instance1	Postgres, Patroni,etcd	11.22.33.236
+Instance2	Postgres, Patroni,etcd	11.22.33.237
+Instance3	Postgres, Patroni,etcd	11.22.33.238
+
+
+
+etcd --initial-advertise-peer-urls 'http://11.22.33.238:2380' --initial-cluster 'default=http://11.22.33.238:2380' --initial-cluster-state 'new' --initial-cluster-token 'etc-cluster'  --listen-peer-urls 'http://11.22.33.238:2380' --listen-client-urls 'http://11.22.33.238:2379' --advertise-client-urls 'http://11.22.33.238:2379' 
+etcd --initial-advertise-peer-urls 'http://11.22.33.236:2379' --initial-cluster 'rhel8-etcd1=http://11.22.33.236:2380,rhel8-etcd2=http://11.22.33.237:2380,rhel8-etcd3=http://11.22.33.238:2380' --initial-cluster-state 'new' --initial-cluster-token 'etcd-cluster-01'  --listen-peer-urls 'http://11.22.33.236:2380' --listen-client-urls 'http://11.22.33.236:2379,http://127.0.0.1:2379' --advertise-client-urls 'http://11.22.33.236:2379' 
+etcd --initial-advertise-peer-urls 'http://11.22.33.236:2379' --initial-cluster 'rhel8-uranyum01=http://11.22.33.236:2380,rhel8-uranyum02=http://11.22.33.237:2380,rhel8-uranyum03=http://11.22.33.238:2380'  --initial-cluster-state 'new' --initial-cluster-token 'etcd-cluster-01'  --listen-peer-urls 'http://11.22.33.236:2380'  --listen-client-urls 'http://11.22.33.236:2379,http://127.0.0.1:2379' --advertise-client-urls 'http://11.22.33.236:2379' --name 'uranyum01'
+
+ETCD Configuraiton
+###########################################
+
+uranyum01 Master PG - 11.22.33.236
+------------------------------------
+ETCD_INITIAL_CLUSTER="rhel8-etcd1=http://11.22.33.236:2380,rhel8-etcd2=http://11.22.33.237:2380,rhel8-etcd3=http://11.22.33.238:2380"
+ETCD_INITIAL_CLUSTER_STATE="new"
+ETCD_INITIAL_CLUSTER_TOKEN="etcd-cluster-01"
+ETCD_INITIAL_ADVERTISE_PEER_URLS="http://11.22.33.236:2380"
+ETCD_DATA_DIR="/var/etcd"
+ETCD_LISTEN_PEER_URLS="http://11.22.33.236:2380"
+ETCD_LISTEN_CLIENT_URLS="http://11.22.33.236:2379,http://127.0.0.1:2379"
+ETCD_ADVERTISE_CLIENT_URLS="http://11.22.33.236:2379"
+ETCD_NAME="rhel8-etcd1"
+
+uranyum05 Slave PG  - 11.22.33.237
+------------------------------------
+ETCD_INITIAL_CLUSTER="rhel8-etcd1=http://11.22.33.236:2380,rhel8-etcd2=http://11.22.33.237:2380,rhel8-etcd3=http://11.22.33.238:2380"
+ETCD_INITIAL_CLUSTER_STATE="new"
+ETCD_INITIAL_CLUSTER_TOKEN="etcd-cluster-01"
+ETCD_INITIAL_ADVERTISE_PEER_URLS="http://11.22.33.237:2380"
+ETCD_DATA_DIR="/var/etcd"
+ETCD_LISTEN_PEER_URLS="http://11.22.33.237:2380"
+ETCD_LISTEN_CLIENT_URLS="http://11.22.33.237:2379,http://127.0.0.1:2379"
+ETCD_ADVERTISE_CLIENT_URLS="http://11.22.33.237:2379"
+ETCD_NAME="rhel8-etcd2"
+
+uranyum04	etcd	- 11.22.33.238
+------------------------------------
+ETCD_INITIAL_CLUSTER="rhel8-etcd1=http://11.22.33.236:2380,rhel8-etcd2=http://11.22.33.237:2380,rhel8-etcd3=http://11.22.33.238:2380"
+ETCD_INITIAL_CLUSTER_STATE="new"
+ETCD_INITIAL_CLUSTER_TOKEN="etcd-cluster-01"
+ETCD_INITIAL_ADVERTISE_PEER_URLS="http://11.22.33.238:2380"
+ETCD_DATA_DIR="/var/etcd"
+ETCD_LISTEN_PEER_URLS="http://11.22.33.238:2380"
+ETCD_LISTEN_CLIENT_URLS="http://11.22.33.238:2379,http://127.0.0.1:2379"
+ETCD_ADVERTISE_CLIENT_URLS="http://11.22.33.238:2379"
+ETCD_NAME="rhel8-etcd3"
+
+mkdir /var/etcd/; chown etcd. /var/etcd/
+systemctl enable etcd
+systemctl start etcd
+etcdctl cluster-health
+
+mkdir -p /pgdata/wal_archive; mkdir -p /pgdata/data ; chown postgres. -R /pgdata/
+
+
+
+
+mkdir /etc/patroni/
+
+vi /etc/patroni/.patroni.yml
+
+Patroni Configuraiton
+###########################################
+scope: rhel8
+namespace: /patron1/
+name: ballica08
+ 
+restapi:
+  listen: 11.22.33.236:8008
+  connect_address: 11.22.33.236:8008
+#  certfile: /etc/ssl/certs/ssl-cert-snakeoil.pem
+#  keyfile: /etc/ssl/private/ssl-cert-snakeoil.key
+#  authentication:
+#    username: username
+#    password: password
+ 
+# ctl:
+#   insecure: false # Allow connections to SSL sites without certs
+#   certfile: /etc/ssl/certs/ssl-cert-snakeoil.pem
+#   cacert: /etc/ssl/certs/ssl-cacert-snakeoil.pem
+etcd:
+  hosts: 11.22.33.236:2379,11.22.33.237:2379,11.22.33.238:2379
+bootstrap:
+  # and all other cluster members will use it as a `global configuration`
+  dcs:
+    ttl: 30
+    loop_wait: 10
+    retry_timeout: 10
+    maximum_lag_on_failover: 1048576
+    postgresql:
+      use_pg_rewind: true
+      use_slots: true
+      parameters:
+        wal_level: 'logical'
+        hot_standby: "on"
+        wal_keep_segments: 8
+        max_replication_slots: 10
+        wal_log_hints: "on"
+        listen_addresses: '*'
+        port: 5432
+        logging_collector: 'on'
+        log_truncate_on_rotation: 'on'
+        log_filename: 'postgresql-%a.log'
+        log_rotation_age: '1440'
+        log_line_prefix: '%m %h %d %u %a %p %i '
+        log_directory: 'pg_log'
+        log_min_messages: 'WARNING'
+        log_autovacuum_min_duration: '60s'
+        log_min_error_statement: 'NOTICE'
+        log_min_duration_statement: '30s'
+        log_checkpoints: 'on'
+        log_statement: 'ddl'
+        log_lock_waits: 'on'
+        log_temp_files: '0'
+        log_timezone: 'Europe/Istanbul'
+        log_connections: 'on'
+        log_disconnections: 'on'
+        log_duration: 'on'
+        client_min_messages: 'WARNING'
+        wal_level: 'replica'
+        hot_standby_feedback: 'on'
+        max_wal_senders: '10'
+        shared_buffers: '1GB'
+        work_mem: '8MB'
+        effective_cache_size: '3GB'
+        maintenance_work_mem: '256MB'
+        wal_compression: 'off'
+        max_wal_senders: '20'
+        shared_preload_libraries: 'pg_stat_statements'
+        autovacuum_max_workers: '6'
+        autovacuum_vacuum_scale_factor: '0.1'
+        autovacuum_vacuum_threshold: '50'
+        archive_mode: 'on'
+#        archive_command: '/bin/true'
+        wal_log_hints: 'on'
+        archive_timeout: 1800s
+        archive_command: rsync "ssh -q" -a %p postgres@11.22.33.236:/pgdata/wal_archive/%f && rsync "ssh -q" -a %p postgres@11.22.33.237:/pgdata/wal_archive/%f rsync "ssh -q" -a %p postgres@11.22.33.238
+:/pgdata/wal_archive/%f
+      recovery_conf:
+        restore_command: cp /pgdata/wal_archive/%f %p
+# some desired options for 'initdb'
+  initdb:  # Note: It needs to be a list (some options need values, others are switches)
+  - encoding: UTF8
+  - data-checksums
+ 
+  pg_hba:  # Add following lines to pg_hba.conf after running 'initdb'
+  - host replication replicator 11.22.33.0/24 md5
+  - host all all 11.22.33.0/24 md5
+#  - hostssl all all 0.0.0.0/0 md5
+ 
+  # Additional script to be launched after initial cluster creation (will be passed the connection URL as parameter)
+# post_init: /usr/local/bin/setup_cluster.sh
+ 
+  # Some additional users users which needs to be created after initializing new cluster
+  users:
+    admin:
+      password: MyPass_77
+      options:
+        - createrole
+        - createdb
+    replicator:
+      password: pwd**
+      options:
+        - superuser
+ 
+postgresql:
+  listen: 0.0.0.0:5432
+  connect_address: 11.22.33.236:5432
+  data_dir: /pgdata/data
+  config_dir: /pgdata/data
+  bin_dir: /usr/pgsql-12/bin
+#  config_dir:
+  pgpass: /pgdata/.pgpass
+  authentication:
+    replication:
+      username: replicator
+      password: pwd**
+    superuser:
+      username: postgres
+      password: pwd**
+  parameters:
+#    unix_socket_directories: '/tmp'
+ 
+#watchdog:
+#  mode: automatic # Allowed values: off, automatic, required
+#  device: /dev/watchdog
+#  safety_margin: 5
+ 
+tags:
+    nofailover: false
+    noloadbalance: false
+    clonefrom: false
+    nosync: false
+
+------------------------
+patronictl -c /etc/patroni.yml list
+
+

@@ -1,0 +1,31 @@
+CREATE EXTENSION pgcrypto; 
+
+ENCRYPTION EXAMPE
+
+Create table mytab(numaram integer,password varchar(255)); 
+
+insert into mytab values(1,PGP_SYM_ENCRYPT('gizliSifrem','MY_SECRET_KEY'));
+select * from mytab;
+
+UPDATE mytab SET password=( PGP_SYM_ENCRYPT('yenigizliSifrem','MY_SECRET_KEY') ) WHERE numaram=1;	   
+select * from mytab;
+select numaram,pgp_sym_decrypt(password::bytea,'MY_SECRET_KEY') from mytab;
+
+insert into mytab values(2,PGP_SYM_ENCRYPT('Sifrebidaha','MY_SECRET_KEY'));
+select numaram,password from mytab where pgp_sym_decrypt(password::bytea,'MY_SECRET_KEY') ='Sifrebidaha';
+
+testdb=# update mytab set password ='DSAFASDFASDFcvxcvbnxfndsofgd';
+UPDATE 2
+testdb=# select numaram,password from mytab where pgp_sym_decrypt(password::bytea,'MY_SECRET_KEY') ='Sifrebidaha';
+ERROR:  Wrong key or corrupt data
+CONTEXT:  parallel worker
+testdb=# 
+
+
+HASH EXAMPLE
+
+Create table myHashtab (numaram integer,password varchar(255)); 
+
+insert into myHashtab values(3,sha256('yepyenisifre'));
+
+select * from myHashtab where password = sha256('yepyenisifre')::varchar;

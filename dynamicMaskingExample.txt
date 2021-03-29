@@ -1,0 +1,46 @@
+\c testdb
+create extension tsm_system_rows ;
+create extension ddlx ; 
+create extension anon ;
+
+COMMENT ON ROLE testuser IS 'MASKED';
+SELECT anon.start_dynamic_masking('bipussu');
+COMMENT ON COLUMN bipussu.otp_key.otp_key IS 'MASKED WITH FUNCTION anon.partial(otp_key,0,$$*******$$,0)'; 
+
+
+Example:
+
+CREATE TABLE people ( id TEXT, firstname TEXT, lastname TEXT, phone TEXT);
+INSERT INTO people VALUES ('T1','Sarah', 'Conor','0609110911');
+SELECT * FROM people;
+
+=# SELECT * FROM people;
+ id | fistname | lastname |   phone
+----+----------+----------+------------
+ T1 | Sarah    | Conor    | 0609110911
+(1 row)
+Step 1 : Activate the dynamic masking engine
+
+=# CREATE EXTENSION IF NOT EXISTS anon CASCADE;
+=# SELECT anon.start_dynamic_masking('a1');
+Step 2 : Declare a masked user
+
+CREATE ROLE skynet LOGIN;
+SECURITY LABEL FOR anon ON ROLE skynet IS 'MASKED';
+
+otk_key
+
+Step 3 : Declare the masking rules
+
+SECURITY LABEL FOR anon ON COLUMN people.firstname IS 'MASKED WITH FUNCTION anon.random_last_name()';
+
+SECURITY LABEL FOR anon ON COLUMN otk_key.otk_key IS 'MASKED WITH FUNCTION anon.partial(phone,0,********,0)';
+
+Step 4 : Connect with the masked user
+
+=# \! psql peopledb -U skynet -c 'SELECT * FROM people;'
+ id | fistname | lastname  |   phone
+----+----------+-----------+------------
+ T1 | Sarah    | Stranahan | 06******11
+(1 row)
+

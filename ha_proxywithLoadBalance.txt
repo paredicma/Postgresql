@@ -1,0 +1,114 @@
+#!/bin/bash
+# This script checks if a postgres server is healthy running on localhost. It will return:
+# "HTTP/1.x 200 OK\r" (if postgres is running smoothly)
+# - OR -
+# "HTTP/1.x 500 Internal Server Error\r" (else)
+# The purpose of this script is make haproxy capable of monitoring postgres properly
+# It is recommended that a low-privileged postgres  user is created to be used by this script.
+# For eg. create  user healthchkusr login password 'hc321';
+ 
+PGBIN=/usr/pgsql-10/bin
+PGSQL_HOST="localhost"
+PGSQL_PORT="5432"
+PGSQL_DATABASE="postgres"
+PGSQL_USERNAME="postgres"
+export PGPASSWORD="passwd"
+TMP_FILE="/tmp/pgsqlchk.out"
+ERR_FILE="/tmp/pgsqlchk.err"
+ 
+ 
+# We perform a simple query that should return a few results
+ 
+VALUE=`/opt/bigsql/pg96/bin/psql -t -h localhost -U postgres -p 5432 -c "select pg_is_in_recovery()" 2> /dev/null`
+# Check the output. If it is not empty then everything is fine and we return something. Else, we just do not return anything.
+ 
+ 
+if [ $VALUE == "t" ]
+then
+    /bin/echo -e "HTTP/1.1 206 OK\r\n"
+    /bin/echo -e "Content-Type: Content-Type: text/plain\r\n"
+    /bin/echo -e "\r\n"
+    /bin/echo "Standby"
+    /bin/echo -e "\r\n"
+elif [ $VALUE == "f" ]
+then
+    /bin/echo -e "HTTP/1.1 200 OK\r\n"
+    /bin/echo -e "Content-Type: Content-Type: text/plain\r\n"
+    /bin/echo -e "\r\n"
+    /bin/echo "Primary"
+    /bin/echo -e "\r\n"
+else
+    /bin/echo -e "HTTP/1.1 503 Service Unavailable\r\n"
+    /bin/echo -e "Content-Type: Content-Type: text/plain\r\n"
+    /bin/echo -e "\r\n"
+    /bin/echo "DB Down"
+    /bin/echo -e "\r\n"
+fi
+
+
+--------------------------------
+sudo chmod 755 /opt/pgsqlchk
+
+
+
+sudo yum install -y xinetd telnet
+
+
+sudo vi /etc/xinetd.d/pgsqlchk
+##############################
+service pgsqlchk
+{
+        flags           = REUSE
+        socket_type     = stream
+        port            = 23267
+        wait            = no
+        user            = nobody
+        server          = /opt/pgsqlchk
+        log_on_failure  += USERID
+        disable         = no
+        only_from       = 0.0.0.0/0
+        per_source      = UNLIMITED
+}
+
+sudo bash -c 'echo "pgsqlchk 23267/tcp # pgsqlchk" >> /etc/services'
+
+
+
+sudo systemctl start xinetd
+
+sudo vi /etc/haproxy/haproxy.cfg
+
+############################################
+global
+    maxconn 100
+ 
+defaults
+    log global
+    mode tcp
+    retries 2
+    timeout client 30m
+    timeout connect 4s
+    timeout server 30m
+    timeout check 5s
+ 
+listen stats
+    mode http
+    bind *:7000
+    stats enable
+    stats uri /
+ 
+listen ReadWrite
+    bind *:5000
+    option httpchk
+    http-check expect status 200
+    default-server inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
+    server pg0 pg0:5432 maxconn 100 check port 23267
+    server pg1 pg1:5432 maxconn 100 check port 23267
+ 
+listen ReadOnly
+    bind *:5001
+    option httpchk
+    http-check expect status 206
+    default-server inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
+    server pg0 pg0:5432 maxconn 100 check port 23267
+    server pg1 pg1:5432 maxconn 100 check port 23267

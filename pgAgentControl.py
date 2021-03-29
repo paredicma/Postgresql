@@ -14,7 +14,7 @@ from time import *
 from string import *
 import sys
 ##################PARAMETERS##########################
-myLogFile = 'pgagentControl.log'
+myLogFile = 'log/pgagentControl.log'
 mailTO = 'msyavuz@gmail.com'
 writeLogFile = True
 ##################PARAMETERS##########################

@@ -1,0 +1,50 @@
+Name:           PasswordChecker
+Version:        1
+Release:        0
+Summary:        Postgresql Password Checker according to  password policies.
+#PGVersion: 11
+
+Group:          PG
+BuildArch:      noarch
+License:        GPL
+URL:            https://github.com/tecrahul/mydumpadmin.git
+Source0:        postgresql10PasswordChecker-1.0.tar.gz
+
+%description
+Postgresql Password Checker according to  password policies.
+
+	
+Requires: postgresql10-server-10.7-2PGDG.rhel7.x86_64
+Requires: postgresql10-contrib-10.7-2PGDG.rhel7.x86_64
+
+#%prep
+#zcat $RPM_SOURCE_DIR/postgresql10PasswordChecker-1.0.tar.gz | tar -xvf 
+
+%setup -q
+%build
+build -m 0755 -d $RPM_BUILD_ROOT/usr/pgsql-10/lib/
+build -m 0755 -d $RPM_BUILD_ROOT/usr/pgsql-10/share/extension/
+build -m 0755 $RPM_SOURCE_DIR/postgresql10PasswordChecker-1.0/passwordcheck.so $RPM_BUILD_ROOT/usr/pgsql-10/lib/passwordcheck.so
+build -m 0644 $RPM_SOURCE_DIR/postgresql10PasswordChecker-1.0/passwordcheck.control $RPM_BUILD_ROOT/usr/pgsql-10/share/extension/passwordcheck.control
+build -m 0644 $RPM_SOURCE_DIR/postgresql10PasswordChecker-1.0/README.md $RPM_BUILD_ROOT/usr/pgsql-10/share/extension/passwordcheckREADME.md
+build -m 0644 $RPM_SOURCE_DIR/postgresql10PasswordChecker-1.0/passwordcheck--1.0.sql $RPM_BUILD_ROOT/usr/pgsql-10/share/extension/passwordcheck--1.0.sql
+
+%install
+install -m 0755 $RPM_BUILD_ROOT/usr/pgsql-10/lib/passwordcheck.so /usr/pgsql-10/lib/passwordcheck.so
+install -m 0644 $RPM_BUILD_ROOT/usr/pgsql-10/share/extension/passwordcheck.control /usr/pgsql-10/lib/passwordcheck.control
+install -m 0644 $RPM_BUILD_ROOT/usr/pgsql-10/share/extension/passwordcheckREADME.md /usr/pgsql-10/lib/passwordcheckREADME.md
+install -m 0644 $RPM_BUILD_ROOT/usr/pgsql-10/share/extension/passwordcheck--1.0.sql /usr/pgsql-10/lib/passwordcheck--1.0.sql
+
+%files
+/usr/pgsql-10/lib/passwordcheck.so
+/usr/pgsql-10/share/extension/passwordcheck.control
+/usr/pgsql-10/share/extension/passwordcheckREADME.md
+/usr/pgsql-10/share/extension/passwordcheck--1.0.sql
+
+#%clean
+#rm -rf $RPM_BUILD_ROOT
+
+
+%changelog
+* Tue Sep 04 2019 Mustafa YAVUZ  1.0
+  - Initial rpm release
