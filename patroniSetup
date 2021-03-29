@@ -1,0 +1,493 @@
+[root@titanyum01:~]# sysctl -p
+kernel.shmmax = 472446402560
+kernel.shmall = 115343360
+kernel.shmmni = 4096
+kernel.sem = 250 256000 32 1024
+vm.nr_hugepages = 20000
+vm.swappiness = 1
+vm.zone_reclaim_mode = 0
+kernel.numa_balancing = 0
+
+
+Postgresql Setup
+-----------------------
+yum install -y  postgresql12-12.4-1PGDG.rhel7.x86_64.rpm postgresql12-libs-12.4-1PGDG.rhel7.x86_64.rpm postgresql12-server-12.4-1PGDG.rhel7.x86_64.rpm postgresql12-contrib-12.4-1PGDG.rhel7.x86_64.rpm         
+yum install -y postgresql12-plpython3-12.4-1PGDG.rhel7.x86_64.rpm pg_wait_sampling_12-1.1.1-1.rhel7.x86_64.rpm pg_cron_12-1.3.0-1.rhel7.x86_64.rpm pg_pathman12-1.5.11-1.rhel7.x86_64.rpm pg_qualstats12-2.0.2-1.rhel7.x86_64.rpm pg_stat_kcache12-2.1.3-1.rhel7.x86_64.rpm hypopg_12-1.1.4-1.rhel7.x86_64.rpm 
+rpm -ivh postgresql12-turkcellPasswordChecker-1-0.x86_64.rpm
+rpm -ivh powa_12-4.0.1-2.rhel7.x86_64.rpm 
+
+patroni Setup
+----------------------
+yum install -y etcd.x86_64
+rpm -ivh python3-psycopg2-2.8.6-1.testdb.x86_64.rpm
+rpm -ivh python3-ydiff-1.2-10.rhel7.noarch.rpm  python36-click-6.7-8.el7.noarch.rpm  python36-six-1.14.0-2.el7.noarch.rpm python36-prettytable-0.7.2-19.el7.noarch.rpm python36-PyYAML-3.13-1.el7.x86_64.rpm python36-dateutil-2.4.2-5.el7.noarch.rpm
+rpm -ivh python36-psutil-5.6.7-1.el7.x86_64.rpm
+rpm -ivh python3-cdiff-1.0-1.rhel7.noarch.rpm
+yum install -y patroni-2.0.1-4.rhel7.x86_64.rpm
+yum install -y python36-crypto-2.6.1-16.el7.x86_64.rpm python36-pysocks-1.6.8-7.el7.noarch.rpm 
+yum install -y python36-certifi-2018.10.15-5.el7.noarch.rpm python36-dns-1.16.0-1.el7.noarch.rpm  python3-etcd-0.4.5-20.rhel7.noarch.rpm python36-urllib3-1.25.6-1.el7.noarch.rpm
+rpm -ivh patroni-etcd-2.0.1-4.rhel7.x86_64.rpm 
+
+pg_activity setup
+-----------------------
+yum install -y pg_activity-1.6.2-1.rhel7.noarch.rpm
+
+pgbackrest setup
+-------------------------
+rpm -ivh libzstd-1.4.5-3.el7.x86_64.rpm pgbackrest-2.30-1.rhel7.x86_64.rpm 
+
+
+yum install -y etcd.x86_64
+
+vi /etc/security/limits.conf
+#############################
+postgres soft    nproc       65536
+postgres hard    nproc       81920
+postgres soft    nofile      128000
+postgres hard    nofile      131072
+postgres soft    stack       65536
+postgres hard  memlock  unlimited
+postgres soft  memlock  unlimited
+
+mkdir -p /pgdata/data
+mkdir -p /pgdata/WAL_ARCHIVE
+chown postgres. -R /pgdata/
+
+ vi /etc/etcd/etcd.conf
+ ############################
+ETCD_INITIAL_CLUSTER="testdb-etcd1=http://10.20.30.140:2380,testdb-etcd2=http://10.20.30.141:2380,testdb-etcd3=http://10.30.30.39:2380"
+ETCD_INITIAL_CLUSTER_STATE="new"
+ETCD_INITIAL_CLUSTER_TOKEN="etcd-testdb-01"
+ETCD_INITIAL_ADVERTISE_PEER_URLS="http://10.20.30.140:2380"
+ETCD_DATA_DIR="/var/etcd"
+ETCD_LISTEN_PEER_URLS="http://10.20.30.140:2380"
+ETCD_LISTEN_CLIENT_URLS="http://10.20.30.140:2379,http://127.0.0.1:2379"
+ETCD_ADVERTISE_CLIENT_URLS="http://10.20.30.140:2379"
+ETCD_NAME="testdb-etcd1"
+
+ETCD_INITIAL_CLUSTER="testdb-etcd1=http://10.20.30.140:2380,testdb-etcd2=http://10.20.30.141:2380,testdb-etcd3=http://10.30.30.39:2380"
+ETCD_INITIAL_CLUSTER_STATE="new"
+ETCD_INITIAL_CLUSTER_TOKEN="etcd-testdb-01"
+ETCD_INITIAL_ADVERTISE_PEER_URLS="http://10.20.30.141:2380"
+ETCD_DATA_DIR="/var/etcd"
+ETCD_LISTEN_PEER_URLS="http://10.20.30.141:2380"
+ETCD_LISTEN_CLIENT_URLS="http://10.20.30.141:2379,http://127.0.0.1:2379"
+ETCD_ADVERTISE_CLIENT_URLS="http://10.20.30.141:2379"
+ETCD_NAME="testdb-etcd2"
+
+ETCD_INITIAL_CLUSTER="testdb-etcd1=http://10.20.30.140:2380,testdb-etcd2=http://10.20.30.141:2380,testdb-etcd3=http://10.30.30.39:2380"
+ETCD_INITIAL_CLUSTER_STATE="new"
+ETCD_INITIAL_CLUSTER_TOKEN="etcd-testdb-01"
+ETCD_INITIAL_ADVERTISE_PEER_URLS="http://10.30.30.39:2380"
+ETCD_DATA_DIR="/var/etcd"
+ETCD_LISTEN_PEER_URLS="http://10.30.30.39:2380"
+ETCD_LISTEN_CLIENT_URLS="http://10.30.30.39:2379,http://127.0.0.1:2379"
+ETCD_ADVERTISE_CLIENT_URLS="http://10.30.30.39:2379"
+ETCD_NAME="testdb-etcd3"
+ 
+mkdir /var/etcd/; chown etcd. /var/etcd/
+systemctl enable etcd; systemctl start etcd
+etcdctl cluster-health
+
+mkdir /etc/patroni/
+
+su - postgres
+
+mkdir 
+
+
+
+
+
+
+scope: testdb
+namespace: testnspace
+name: titanyum01
+
+restapi:
+  listen: 10.20.30.140:8008
+  connect_address: 10.20.30.140:8008
+#  certfile: /etc/ssl/certs/ssl-cert-snakeoil.pem
+#  keyfile: /etc/ssl/private/ssl-cert-snakeoil.key
+  authentication:
+    username: patron
+    password: testdbPWD
+
+etcd:
+  hosts: 10.20.30.140:2379,10.20.30.141:2379,10.30.30.39:2379
+
+bootstrap:
+  # this section will be written into Etcd:/<namespace>/<scope>/config after initializing new cluster
+  # and all other cluster members will use it as a `global configuration`
+  dcs:
+    ttl: 30
+    loop_wait: 10
+    retry_timeout: 10
+    maximum_lag_on_failover: 1048576
+    synchronous_mode: false
+    postgresql:
+      use_pg_rewind: true
+      use_slots: true
+      parameters:
+        hot_standby: "on"
+        listen_addresses: '*'
+        port: 5432
+        archive_mode: "on"
+        archive_timeout: 1800s
+        archive_command: 'rsync -e "ssh -q" -a %p postgres@10.20.30.140:/pgdata/WAL_ARCHIVE/%f && rsync -e "ssh -q" -a %p postgres@10.20.30.141:/pgdata/WAL_ARCHIVE/%f && rsync -e "ssh -q"  -a %p postgres@10.30.30.39:/pgdata/WAL_ARCHIVE/%f && pgbackrest --stanza=testdb archive-push %p'
+        datestyle: iso, mdy
+        effective_cache_size: 440GB
+        effective_io_concurrency: 300
+        enable_partitionwise_aggregate: 'on' 
+        maintenance_work_mem: 4GB
+        max_connections: 12000
+        log_checkpoints: 'on'
+        log_connections: 'on'
+        log_destination: stderr
+        log_directory: log
+        log_disconnections: 'on'
+        log_error_verbosity: default
+        log_filename: oksijen-%a-%H.log
+        log_hostname: 'on'
+        log_line_prefix: '%m %h %d %u %a %p %i '
+        log_lock_waits: 'on'
+        log_min_duration_statement: 500
+        log_rotation_age: '1h'
+        log_statement: ddl
+        log_temp_files: 0
+        log_timezone: Europe/Istanbul
+        log_truncate_on_rotation: 'on'
+        logging_collector: 'on'
+        lc_messages: 'C'
+        maintenance_work_mem: 4GB
+        max_connections: 12000
+        max_parallel_maintenance_workers: 4
+        max_parallel_workers: 96
+        max_parallel_workers_per_gather: 4
+        max_replication_slots: 10
+        max_standby_archive_delay: 300s
+        max_standby_streaming_delay: 300s
+        max_wal_senders: 10
+        max_worker_processes: 96
+        random_page_cost: 1.1
+        shared_buffers: 32GB
+        shared_preload_libraries: tcellpasswordcheck,pg_partman_bgw, powa, pg_stat_statements, pg_stat_kcache, pg_qualstats, pg_wait_sampling
+        superuser_reserved_connections: 20
+        timezone: Europe/Istanbul
+        track_io_timing: 'on'
+        wal_keep_segments: 1000
+        wal_level: logical
+        wal_log_hints: 'on'
+        work_mem: 16MB
+      recovery_conf:
+        restore_command: cp /pgdata/WAL_ARCHIVE/%f %p
+        archive_cleanup_command: /usr/pgsql-12/bin/pg_archivecleanup /pgdata/WAL_ARCHIVE/ %r
+
+  # some desired options for 'initdb'
+  initdb:  # Note: It needs to be a list (some options need values, others are switches)
+  - encoding: UTF8
+  - data-checksums
+
+  pg_hba:  # Add following lines to pg_hba.conf after running 'initdb'
+  - host replication replicator 127.0.0.1/32 md5
+  - host replication replicator 10.20.30.140/32 md5
+  - host replication replicator 10.20.30.141/32 md5
+  - host replication replicator 10.30.30.39/32 md5
+  - host all postgres 10.20.30.140/32 md5
+  - host all postgres 10.20.30.141/32 md5
+  - host all postgres 10.30.30.39/32 md5
+# Additional script to be launched after initial cluster creation (will be passed the connection URL as parameter)
+# post_init: /usr/local/bin/setup_cluster.sh
+
+  # Some additional users users which needs to be created after initializing new cluster
+  users:
+    admin:
+      password: PWD*** 
+      options:
+        - createrole
+        - createdb
+
+postgresql:
+  listen: 0.0.0.0:5432
+  connect_address: 10.20.30.140:5432
+  data_dir: /pgdata/data
+  config_dir: /pgdata/data
+  bin_dir: /usr/pgsql-12/bin
+  pgpass: /pgdata/.pgpass
+  authentication:
+    replication:
+      username: replicator
+      password: BPer1PWD
+    superuser:
+      username: postgres
+      password: ConePWD
+tags:
+    nofailover: false
+    noloadbalance: false
+    clonefrom: false
+    nosync: false
+
+
+-------------------------------------Node 2 -----------------------------
+scope: testdb
+namespace: testnspace
+name: titanyum02
+
+restapi:
+  listen: 10.20.30.141:8008
+  connect_address: 10.20.30.141:8008
+#  certfile: /etc/ssl/certs/ssl-cert-snakeoil.pem
+#  keyfile: /etc/ssl/private/ssl-cert-snakeoil.key
+  authentication:
+    username: patron
+    password: testdbPWD
+
+etcd:
+  hosts: 10.20.30.140:2379,10.20.30.141:2379,10.30.30.39:2379
+
+bootstrap:
+  # this section will be written into Etcd:/<namespace>/<scope>/config after initializing new cluster
+  # and all other cluster members will use it as a `global configuration`
+  dcs:
+    ttl: 30
+    loop_wait: 10
+    retry_timeout: 10
+    maximum_lag_on_failover: 1048576
+    synchronous_mode: false
+    postgresql:
+      use_pg_rewind: true
+      use_slots: true
+      parameters:
+        hot_standby: "on"
+        listen_addresses: '*'
+        port: 5432
+        archive_mode: "on"
+        archive_timeout: 1800s
+        archive_command: 'rsync -e "ssh -q" -a %p postgres@10.20.30.140:/pgdata/WAL_ARCHIVE/%f && rsync -e "ssh -q" -a %p postgres@10.20.30.141:/pgdata/WAL_ARCHIVE/%f && pgbackrest --stanza=testdb archive-push %p'
+        datestyle: iso, mdy
+        effective_cache_size: 440GB
+        effective_io_concurrency: 300
+        enable_partitionwise_aggregate: 'on' 
+        maintenance_work_mem: 4GB
+        max_connections: 12000
+        log_checkpoints: 'on'
+        log_connections: 'on'
+        log_destination: stderr
+        log_directory: log
+        log_disconnections: 'on'
+        log_error_verbosity: default
+        log_filename: testdb-%a-%H.log
+        log_hostname: 'on'
+        log_line_prefix: '%m %h %d %u %a %p %i '
+        log_lock_waits: 'on'
+        log_min_duration_statement: 500
+        log_rotation_age: '1h'
+        log_statement: ddl
+        log_temp_files: 0
+        log_timezone: Europe/Istanbul
+        log_truncate_on_rotation: 'on'
+        logging_collector: 'on'
+        lc_messages: 'C'
+        maintenance_work_mem: 4GB
+        max_connections: 12000
+        max_parallel_maintenance_workers: 4
+        max_parallel_workers: 96
+        max_parallel_workers_per_gather: 4
+        max_replication_slots: 10
+        max_standby_archive_delay: 300s
+        max_standby_streaming_delay: 300s
+        max_wal_senders: 10
+        max_worker_processes: 96
+        random_page_cost: 1.1
+        shared_buffers: 32GB
+        shared_preload_libraries: tcellpasswordcheck,pg_partman_bgw, powa, pg_stat_statements, pg_stat_kcache, pg_qualstats, pg_wait_sampling
+        superuser_reserved_connections: 20
+        timezone: Europe/Istanbul
+        track_io_timing: 'on'
+        wal_keep_segments: 1000
+        wal_level: logical
+        wal_log_hints: 'on'
+        work_mem: 16MB
+      recovery_conf:
+        restore_command: cp /pgdata/WAL_ARCHIVE/%f %p
+        archive_cleanup_command: /usr/pgsql-12/bin/pg_archivecleanup /pgdata/WAL_ARCHIVE/ %r
+
+  # some desired options for 'initdb'
+  initdb:  # Note: It needs to be a list (some options need values, others are switches)
+  - encoding: UTF8
+  - data-checksums
+
+  pg_hba:  # Add following lines to pg_hba.conf after running 'initdb'
+  - host replication replicator 127.0.0.1/32 md5
+  - host replication replicator 10.20.30.140/32 md5
+  - host replication replicator 10.20.30.141/32 md5
+  - host replication replicator 10.30.30.39/32 md5
+  - host all postgres 10.20.30.140/32 md5
+  - host all postgres 10.20.30.141/32 md5
+  - host all postgres 10.30.30.39/32 md5
+# Additional script to be launched after initial cluster creation (will be passed the connection URL as parameter)
+# post_init: /usr/local/bin/setup_cluster.sh
+
+  # Some additional users users which needs to be created after initializing new cluster
+  users:
+    admin:
+      password: PWD*** 
+      options:
+        - createrole
+        - createdb
+
+postgresql:
+  listen: 0.0.0.0:5432
+  connect_address: 10.20.30.141:5432
+  data_dir: /pgdata/data
+  config_dir: /pgdata/data
+  bin_dir: /usr/pgsql-12/bin
+  pgpass: /pgdata/.pgpass
+  authentication:
+    replication:
+      username: replicator
+      password: BPer1PWD
+    superuser:
+      username: postgres
+      password: ConePWD
+tags:
+    nofailover: false
+    noloadbalance: false
+    clonefrom: false
+    nosync: false
+
+-----------------------------------------------------
+
+-------------------------------------Node 3 -----------------------------
+scope: testdb
+namespace: testnspace
+name: titanyum03
+
+restapi:
+  listen: 10.30.30.39:8008
+  connect_address: 10.30.30.39:8008
+#  certfile: /etc/ssl/certs/ssl-cert-snakeoil.pem
+#  keyfile: /etc/ssl/private/ssl-cert-snakeoil.key
+  authentication:
+    username: patron
+    password: testdbPWD
+
+etcd:
+  hosts: 10.20.30.140:2379,10.20.30.141:2379,10.30.30.39:2379
+
+bootstrap:
+  # this section will be written into Etcd:/<namespace>/<scope>/config after initializing new cluster
+  # and all other cluster members will use it as a `global configuration`
+  dcs:
+    ttl: 30
+    loop_wait: 10
+    retry_timeout: 10
+    maximum_lag_on_failover: 1048576
+    synchronous_mode: false
+    postgresql:
+      use_pg_rewind: true
+      use_slots: true
+      parameters:
+        hot_standby: "on"
+        listen_addresses: '*'
+        port: 5432
+        archive_mode: "on"
+        archive_timeout: 1800s
+        archive_command: 'rsync -e "ssh -q" -a %p postgres@10.20.30.140:/pgdata/WAL_ARCHIVE/%f && rsync -e "ssh -q" -a %p postgres@10.20.30.141:/pgdata/WAL_ARCHIVE/%f && rsync -e "ssh -q" -a %p postgres@10.30.30.39:/pgdata/WAL_ARCHIVE/%f && pgbackrest --stanza=testdb archive-push %p'
+        datestyle: iso, mdy
+        effective_cache_size: 440GB
+        effective_io_concurrency: 300
+        enable_partitionwise_aggregate: 'on' 
+        maintenance_work_mem: 4GB
+        max_connections: 12000
+        log_checkpoints: 'on'
+        log_connections: 'on'
+        log_destination: stderr
+        log_directory: log
+        log_disconnections: 'on'
+        log_error_verbosity: default
+        log_filename: testdb-%a-%H.log
+        log_hostname: 'on'
+        log_line_prefix: '%m %h %d %u %a %p %i '
+        log_lock_waits: 'on'
+        log_min_duration_statement: 500
+        log_rotation_age: '1h'
+        log_statement: ddl
+        log_temp_files: 0
+        log_timezone: Europe/Istanbul
+        log_truncate_on_rotation: 'on'
+        logging_collector: 'on'
+        lc_messages: 'C'
+        maintenance_work_mem: 4GB
+        max_connections: 12000
+        max_parallel_maintenance_workers: 4
+        max_parallel_workers: 96
+        max_parallel_workers_per_gather: 4
+        max_replication_slots: 10
+        max_standby_archive_delay: 7200s
+        max_standby_streaming_delay: 7200s
+        max_wal_senders: 10
+        max_worker_processes: 96
+        random_page_cost: 1.1
+        shared_buffers: 32GB
+        shared_preload_libraries: tcellpasswordcheck,pg_partman_bgw, powa, pg_stat_statements, pg_stat_kcache, pg_qualstats, pg_wait_sampling
+        superuser_reserved_connections: 20
+        timezone: Europe/Istanbul
+        track_io_timing: 'on'
+        wal_keep_segments: 1000
+        wal_level: logical
+        wal_log_hints: 'on'
+        work_mem: 16MB
+      recovery_conf:
+        restore_command: cp /pgdata/WAL_ARCHIVE/%f %p
+        archive_cleanup_command: /usr/pgsql-12/bin/pg_archivecleanup /pgdata/WAL_ARCHIVE/ %r
+
+  # some desired options for 'initdb'
+  initdb:  # Note: It needs to be a list (some options need values, others are switches)
+  - encoding: UTF8
+  - data-checksums
+
+  pg_hba:  # Add following lines to pg_hba.conf after running 'initdb'
+  - host replication replicator 127.0.0.1/32 md5
+  - host replication replicator 10.20.30.140/32 md5
+  - host replication replicator 10.20.30.141/32 md5
+  - host replication replicator 10.30.30.39/32 md5
+  - host all all 10.20.30.140/32 md5
+  - host all all 10.20.30.141/32 md5
+  - host all all 10.30.30.39/32 md5
+# Additional script to be launched after initial cluster creation (will be passed the connection URL as parameter)
+# post_init: /usr/local/bin/setup_cluster.sh
+
+  # Some additional users users which needs to be created after initializing new cluster
+  users:
+    admin:
+      password: PWD*** 
+      options:
+        - createrole
+        - createdb
+
+postgresql:
+  listen: 0.0.0.0:5432
+  connect_address: 10.30.30.39:5432
+  data_dir: /pgdata/data
+  config_dir: /pgdata/data
+  bin_dir: /usr/pgsql-12/bin
+  pgpass: /pgdata/.pgpass
+  authentication:
+    replication:
+      username: replicator
+      password: BPer1PWD
+    superuser:
+      username: postgres
+      password: ConePWD
+tags:
+    nofailover: true
+    noloadbalance: false
+    clonefrom: false
+    nosync: false
+
+
+
+
+
+chown postgres. -R /etc/patroni/

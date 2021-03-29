@@ -1,0 +1,123 @@
+##################### # PostgreSQL pgAlarmic (pgAlarmic.py) ############
+#!/usr/bin/python
+#-*- coding: utf-8 -*-
+## Author			: Mustafa YAVUZ
+## E-mail			: mustafa.yavuz@turkcell.com.tr
+## Version			: 1.0
+## Date				: 12.03.2021
+## OS System 		: Redhat/Centos 7,8, debian/Ubuntu
+## pg Version 		: 9.x,10.x,11.x,12.x,13.x  
+################## LIBRARIES ################################
+import os
+from time import *
+from string import *
+import psycopg2
+import socket
+import subprocess
+##################PARAMETERS##########################
+### ALARM_ID	ALARM_TEXT	SEVERITY	SERVICE_ MODEL
+#### SERVICE LIST#####
+myServiceList=[]
+myServiceList.append(["patroni","Patroni Service Problem","CRITICAL","1"])
+myServiceList.append(["etcd",'ETCD Service Problem',"CRITICAL","1"])
+myServiceList.append(["vipmaster","Vipmaster Service Problem","CRITICAL","1"])
+#### IP LIST #####
+serviceIPArray=[["10.20.30.212",'CRITICAL'],["10.20.30.211",'MAJOR']]
+#### DB CONNECT #####
+DBConnectStatus=["DBConnect","DB connection Problem","CRITICAL","1"]
+#### SQL LIST  #########
+mySQLList=[]
+mySQLList.append("select 'ActiveSession|||'||'Active Session reached:'||count(*)::text||' |||'|| case when count(*)>500 then 'CRITICAL|||1|||1' WHEN count(*)>300 THEN 'MAJOR|||1|||1' else 'MINOR|||0|||1' END  from pg_stat_activity where state='active'")
+mySQLList.append("select 'ClusterConnectionLimit|||'||'Cluster Connection limit is reached:'||count(*)::text||' |||'|| case WHEN (count(*)::float/(select setting from pg_settings where name ='max_connections')::float)*100>95 then 'CRITICAL|||1|||1' WHEN (count(*)::float/(select setting from pg_settings where name ='max_connections')::float)*100>90 then 'MAJOR|||1|||1' WHEN (count(*)::float/(select setting from pg_settings where name ='max_connections')::float)*100>80 THEN 'MINOR|||1|||1' else 'MINOR|||0|||1' END from pg_stat_activity")
+####################
+myAlarmList=[]
+myHostName=socket.gethostname()
+sleepTime=1  # 
+isPrimary=False #True
+mainDB='postgres'
+dbSuperUser = 'postgres'
+myQuery='select 1'
+dbPort='5432'
+alarmFILE='alarm.txt'
+#################PARAMETERS##########################
+#################AUX FUNCTIONS##########################
+def fileClearWrite(file, writeText):
+	try :
+		fp=open(file,'w')
+		fp.write(writeText+'\n')
+		fp.close()
+	except :
+		print ('!!! An error is occurred while writing file !!!')
+		
+def serviceControl():
+	for myService in myServiceList:
+		p =  subprocess.Popen(["systemctl", "is-active",  str(myService[0])], stdout=subprocess.PIPE)
+		(output, err) = p.communicate()
+		output = output.decode('utf-8').replace("\n","")
+		if(output!='active'):
+			myAlarmList.append([str(myService[0])+"|||"+str(myService[1])+"|||"+str(myService[2])+"|||"+"0"+"|||"+str(myService[3])])
+		else:
+			myAlarmList.append([str(myService[0])+"|||"+str(myService[1])+"|||"+str(myService[2])+"|||"+"1"+"|||"+str(myService[3])])
+#			print ("OK")
+def pingIP():
+	for serviceIP in serviceIPArray:
+		ping_test = subprocess.getstatusoutput('/usr/bin/ping  '+str(serviceIP[0])+'  -c 1 -W 5')
+		if(ping_test[0]==0):
+			myAlarmList.append(["IPReachControl:"+str(serviceIP[0])+"|||IP -> OK|||"+str(serviceIP[1])+"|||0|||1"])
+		else:
+			myAlarmList.append(["IPReachControl:"+str(serviceIP[0])+"|||IP -> DOWN|||"+str(serviceIP[1])+"|||1|||1"])
+		
+def isDBOpen():
+	myResult=mainDBQuery("select 1")
+#	print (myResult[0][0])
+	if(str(myResult[0][0])=="1"):
+#		print ("OK")		
+		myAlarmList.append([str(DBConnectStatus[0])+"|||"+str(DBConnectStatus[1])+"|||"+str(DBConnectStatus[2])+"|||"+"0"+"|||"+str(DBConnectStatus[3])])
+		return True
+	else:
+		myAlarmList.append([str(DBConnectStatus[0])+"|||"+str(DBConnectStatus[1])+"|||"+str(DBConnectStatus[2])+"|||"+"1"+"|||"+str(DBConnectStatus[3])])
+		return False
+def sqlListControl():
+	for mySQL in mySQLList:
+		myResult=mainDBQuery(mySQL)
+#		print(str(myResult))
+		myAlarmList.append(myResult[0])
+def mainDBQuery(myQuery):
+	conn = psycopg2.connect(database=mainDB,user=dbSuperUser,port=dbPort)
+	cursor = conn.cursor()
+	cursor.execute(myQuery)
+	myResult=cursor.fetchall()
+	conn.close()
+	return myResult
+#def targetDBQuery(myDB,myQuery):
+#	conn = psycopg2.connect(database=myDB,user=dbSuperUser,port=dbPort)
+#	cursor = conn.cursor()
+#	cursor.execute(myQuery)
+#	myResult=cursor.fetchall()
+#	conn.close()
+#	return myResult			
+#################AUX FUNCTIONS##########################
+
+def getDBPrimaryStatus():
+	myResp = mainDBQuery("select pg_is_in_recovery()")
+	if (str(myResp[0]).find("f")):
+		return True
+	else:
+		return 	False	
+################ Main Function ############
+def main():
+	isPrimary=getDBPrimaryStatus()
+	if(isPrimary):
+		print (" I am patron.")
+	serviceControl()
+	pingIP()
+	if(isDBOpen()):
+		sqlListControl()
+	myAlarmText=""
+	for myAlarm in myAlarmList:
+		if(myAlarmList[-1]!=myAlarm):
+			myAlarmText+=myAlarm[0]+"\n"
+		else:
+			myAlarmText+=myAlarm[0]
+	fileClearWrite(alarmFILE, myAlarmText)
+main()
